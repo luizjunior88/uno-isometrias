@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>UNO Isometrias - Painel do Professor</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 20px; background: #121212; color: #fff; }
+        h1 { color: #9c27b0; text-align: center; }
+        .controls { text-align: center; margin-bottom: 30px; background: #1e1e1e; padding: 20px; border-radius: 8px; }
+        select, button { padding: 10px 15px; font-size: 1.1em; border-radius: 4px; border: none; }
+        select { background: #333; color: white; margin-right: 10px; }
+        button { background: #9c27b0; color: white; font-weight: bold; cursor: pointer; }
+        button:hover { background: #7b1fa2; }
+        
+        /* Nova secção de comando pedagógico */
+        .master-controls { text-align: center; margin: 20px auto; max-width: 600px; padding: 15px; background: #2a1b3d; border: 2px solid #a855f7; border-radius: 12px; }
+        .btn-pause { background: #e11d48; margin-right: 10px; }
+        .btn-resume { background: #22c55e; }
+        
+        #grid-salas { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card-sala { background: #1e1e1e; padding: 20px; border-radius: 8px; border: 2px solid #444; }
+        .card-sala h3 { margin-top: 0; color: #4fc3f7; border-bottom: 1px solid #444; padding-bottom: 10px;}
+        .card-sala label { display: block; font-size: 0.8em; color: #aaa; margin-top: 10px; }
+        .card-sala input { width: 100%; padding: 8px; margin-top: 4px; border-radius: 4px; border: 1px solid #555; background: #222; color: #00ff00; font-weight: bold; box-sizing: border-box;}
+        .status { margin-top: 15px; font-size: 0.9em; font-weight: bold; text-align: center;}
+        .success { color: #4caf50; }
+        .error { color: #ff5252; }
+        .btn-criar-tudo { display: block; width: 100%; max-width: 400px; margin: 30px auto; padding: 15px; background: #9c27b0; font-size: 1.2em; display: none;}
+        .btn-extra { background: #0277bd; margin: 20px auto; display: none; }
+    </style>
+</head>
+<body>
+    <h1>Painel do Professor</h1>
+    
+    <div class="master-controls">
+        <h3 style="margin-top:0; color:#a855f7;">📢 Controlo de Atenção em Sala</h3>
+        <button class="btn-pause" onclick="setGlobalPause(true)">⏸️ PAUSAR TODOS OS GRUPOS</button>
+        <button class="btn-resume" onclick="setGlobalPause(false)">▶️ RETOMAR JOGOS</button>
+    </div>
+    
+    <div class="controls">
+        <label>Grupos Base:</label>
+        <select id="qtdGrupos">
+            <option value="2">2 Grupos</option><option value="3">3 Grupos</option>
+            <option value="4" selected>4 Grupos</option><option value="5">5 Grupos</option>
+        </select>
+        <label style="margin-left:20px;">Elementos por Grupo:</label>
+        <select id="qtdElementos">
+            <option value="2">2 Alunos</option><option value="3">3 Alunos</option><option value="4" selected>4 Alunos</option>
+        </select>
+        <button onclick="gerarPaineis()">Gerar Salas</button>
+    </div>
+
+    <div id="grid-salas"></div>
+    <button id="btnExtra" class="btn-extra" onclick="adicionarGrupoExtra()">+ Adicionar Grupo Extra</button>
+    <button id="btnCriarTudo" class="btn-criar-tudo" onclick="criarTodasAsSalas()">Lançar e Ativar Todas as Salas!</button>
+
+    <script>
+        let totalGrupos = 0;
+        function gerarPin() { return Math.floor(1000 + Math.random() * 9000).toString(); }
+
+        function renderizarCartao(i, elementosBase) {
+            return `
+                <div class="card-sala">
+                    <h3>Grupo ${i}</h3>
+                    <label>Nome da Sala</label>
+                    <input type="text" id="nome_sala_${i}" value="GRUPO${i}">
+                    <label>Nº de Alunos Esperados</label>
+                    <input type="number" id="jogadores_${i}" value="${elementosBase}">
+                    <label>PINs das Portagens</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="pass_${i}_1" value="${gerarPin()}">
+                        <input type="text" id="pass_${i}_2" value="${gerarPin()}">
+                        <input type="text" id="pass_${i}_3" value="${gerarPin()}">
+                        <input type="text" id="pass_${i}_4" value="${gerarPin()}">
+                    </div>
+                    <div class="status" id="status_${i}"></div>
+                </div>
+            `;
+        }
+
+        function gerarPaineis() {
+            totalGrupos = parseInt(document.getElementById('qtdGrupos').value);
+            const elementosBase = parseInt(document.getElementById('qtdElementos').value);
+            const grid = document.getElementById('grid-salas');
+            grid.innerHTML = "";
+            for(let i = 1; i <= totalGrupos; i++) { grid.innerHTML += renderizarCartao(i, elementosBase); }
+            document.getElementById('btnCriarTudo').style.display = "block";
+            document.getElementById('btnExtra').style.display = "block";
+        }
+
+        function adicionarGrupoExtra() {
+            totalGrupos++;
+            document.getElementById('grid-salas').innerHTML += renderizarCartao(totalGrupos, 2);
+        }
+
+        async function setGlobalPause(shouldPause) {
+            try {
+                await fetch('http://localhost:8000/api/global_pause', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pause: shouldPause })
+                });
+                alert(shouldPause ? "Todos os grupos foram pausados!" : "Jogos retomados com sucesso!");
+            } catch (e) { alert("Erro ao comunicar com o servidor."); }
+        }
+
+        async function criarTodasAsSalas() {
+            for(let i = 1; i <= totalGrupos; i++) {
+                const roomName = document.getElementById(`nome_sala_${i}`).value.trim();
+                const expected = parseInt(document.getElementById(`jogadores_${i}`).value);
+                const p1 = document.getElementById(`pass_${i}_1`).value;
+                const p2 = document.getElementById(`pass_${i}_2`).value;
+                const p3 = document.getElementById(`pass_${i}_3`).value;
+                const p4 = document.getElementById(`pass_${i}_4`).value;
+                const statusDiv = document.getElementById(`status_${i}`);
+                try {
+                    const response = await fetch('http://localhost:8000/api/create_room', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ room_id: roomName, expected_players: expected, passwords: [p1, p2, p3, p4] })
+                    });
+                    const r = await response.json();
+                    statusDiv.innerHTML = r.success ? `<span class="success">✅ Ativa!</span>` : `<span class="error">❌ ${r.message}</span>`;
+                } catch (e) { statusDiv.innerHTML = `<span class="error">Erro de Rede</span>`; }
+            }
+        }
+    </script>
+</body>
+</html>

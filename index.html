@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNO Isometrias</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <style>
+    body { background-color: #1E293B; }
+    .hidden-modal { display: none !important; }
+    .hand-card:hover { transform: translateY(-20px) scale(1.05); z-index: 50; }
+    @keyframes pulse-turn { 0% { transform: scale(1); } 50% { transform: scale(1.05); color: #fff;} 100% { transform: scale(1); } }
+    .turn-active { animation: pulse-turn 1.5s infinite; color: #A855F7 !important; font-weight: 900;}
+  </style>
+</head>
+<body class="text-gray-100 font-sans min-h-screen flex select-none overflow-hidden">
+
+  <aside class="w-64 bg-[#0F172A] p-6 border-r border-slate-700 flex flex-col justify-between z-30 shadow-2xl relative">
+    <div class="space-y-6">
+        <h1 class="text-3xl font-black italic tracking-tighter text-white mb-10 border-b border-slate-700 pb-6 text-center">UNO <span class="text-[#EF4444]">ISOMETRIAS</span></h1>
+        
+        <div id="loginPanel" class="space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400">JOGADOR</h3>
+            <input type="text" id="playerName" placeholder="Nome do Aluno" class="w-full px-4 py-3 bg-[#1E293B] rounded-lg border border-slate-600 text-sm focus:outline-none focus:border-purple-500">
+            <input type="text" id="roomId" placeholder="Código do Grupo" class="w-full px-4 py-3 bg-[#1E293B] rounded-lg border border-slate-600 text-sm focus:outline-none focus:border-purple-500 text-center uppercase">
+            <button onclick="connect()" class="w-full px-4 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg text-sm font-bold transition-colors">ENTRAR NA MESA</button>
+        </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 flex flex-col h-screen overflow-hidden">
+    <header class="px-6 py-4 bg-[#0F172A]/80 border-b border-slate-700 shadow-md flex justify-end items-center gap-3 z-20 relative">
+      <button onclick="startGame()" id="btnStart" disabled class="px-5 py-2.5 bg-[#22C55E] rounded-full text-xs font-bold disabled:opacity-40">INICIAR JOGO</button>
+      <button onclick="drawCard()" id="btnDraw" disabled class="px-5 py-2.5 bg-[#EAB308] text-black rounded-full text-xs font-bold disabled:opacity-40">PESCAR</button>
+      <button onclick="sayIsometria()" id="btnIsometria" disabled class="px-5 py-2.5 bg-[#EF4444] rounded-full text-xs font-bold disabled:opacity-40">ISOMETRIA!</button>
+      <button onclick="toggleRulesModal()" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-full text-xs font-bold border border-slate-500">REGRAS</button>
+    </header>
+
+    <div class="flex-1 flex flex-col items-center justify-center p-6 space-y-6 overflow-y-auto">
+        <div class="text-center w-full max-w-xl">
+            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">Jogadores na Mesa</h3>
+            <div id="playerList" class="flex flex-wrap justify-center gap-3 text-sm font-bold text-slate-300">
+                <span class="italic text-slate-600">A aguardar entrada dos elementos do grupo...</span>
+            </div>
+        </div>
+
+        <div id="mesaCol" class="relative w-full max-w-xl bg-[#0F172A]/50 p-6 rounded-2xl border border-slate-700 shadow-xl h-[320px] flex flex-col">
+          <div class="flex justify-between items-center mb-6 border-b border-slate-600 pb-4">
+            <div class="text-sm font-bold uppercase tracking-widest text-slate-400">
+                TURNO DE: <span id="currentTurn" class="text-[#A855F7] text-xl ml-2 block sm:inline-block">-</span>
+            </div>
+            <div class="text-sm font-bold uppercase tracking-widest text-slate-400 text-right">
+                COR ATIVA: <br><span id="activeColor" class="text-lg font-black transition-colors duration-300">-</span>
+            </div>
+          </div>
+          <div id="discardPile" class="flex-1 flex justify-center items-center py-6 italic text-slate-500 min-h-[200px]">
+            O descarte ficará visível aqui assim que a partida iniciar.
+          </div>
+        </div>
+
+        <footer class="p-6 bg-[#0F172A]/60 border-t border-slate-700 w-full rounded-2xl">
+            <div class="flex justify-center flex-wrap gap-4" id="myHand"></div>
+        </footer>
+    </div>
+  </main>
+
+  <div id="rulesModal" class="hidden-modal fixed inset-0 bg-black/80 z-[70] flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-[#1E293B] p-10 rounded-3xl border-t-4 border-[#3B82F6] w-[500px] text-center shadow-2xl space-y-6">
+        <h1 style="color: #3B82F6; margin-top:0; font-size: 1.8em; font-weight: bold;">📜 Regras do Jogo</h1>
+        <div class="text-left text-sm text-slate-300 space-y-3 leading-relaxed font-medium">
+            <p>1. O teu objetivo principal é descartar todas as cartas da tua mão.</p>
+            <p>2. Podes jogar uma carta caso ela coincida com a <b>Cor Ativa</b> ou com a <b>Isometria/Ação</b> da carta que está no topo do descarte.</p>
+            <p>3. As cartas de Isometria geométrica pura (Translação, Rotação, Reflexão e Reflexão Deslizante) mantêm a cor ativa do jogo.</p>
+            <p>4. Se não tiveres nenhuma jogada válida disponível na tua mão, deves clicar no botão <b>PESCAR</b>.</p>
+            <p>5. Quando tiveres apenas duas cartas na tua mão e fores jogar uma delas, deves obrigatoriamente carregar no botão <b>ISOMETRIA!</b> antes de efetuar a jogada para sinalizar a vitória iminente aos adversários.</p>
+        </div>
+        <button onclick="toggleRulesModal()" class="w-full py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold text-sm">ENTENDIDO</button>
+    </div>
+  </div>
+
+  <div id="colorModal" class="hidden-modal fixed inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-[#1E293B] p-8 rounded-2xl border border-slate-600 text-center shadow-2xl space-y-6">
+      <h2 class="text-xl font-bold mb-0">Escolhe a nova cor para a mesa:</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <button onclick="submitColor('RED')" class="h-24 w-24 bg-[#EF4444] rounded-xl hover:scale-105 border-2 border-white/20 transition-transform"></button>
+        <button onclick="submitColor('BLUE')" class="h-24 w-24 bg-[#3B82F6] rounded-xl hover:scale-105 border-2 border-white/20 transition-transform"></button>
+        <button onclick="submitColor('GREEN')" class="h-24 w-24 bg-[#22C55E] rounded-xl hover:scale-105 border-2 border-white/20 transition-transform"></button>
+        <button onclick="submitColor('YELLOW')" class="h-24 w-24 bg-[#EAB308] rounded-xl hover:scale-105 border-2 border-white/20 transition-transform"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="systemModal" class="hidden-modal fixed inset-0 bg-black/80 z-40 flex items-center justify-center backdrop-blur-sm">
+    <div id="systemModalContent" class="bg-[#1E293B] p-8 rounded-2xl border-t-4 border-[#EAB308] w-80 text-center shadow-2xl space-y-4"></div>
+  </div>
+
+  <script>
+    let ws, myName;
+    let pendingCardIndex = null;
+
+    function renderCard(card, index = null) {
+        const traduzir = { "SKIP": "PULAR", "REVERSE": "INVERTER", "DRAW_TWO": "+2 CARTAS", "JOKER_DRAW_FOUR": "+4 CARTAS", "JOKER": "MUDAR COR", "TRANSLATION": "TRANSLAÇÃO", "ROTATION": "ROTAÇÃO", "REFLECTION": "REFLEXÃO", "GLIDE_REFLECTION": "REFLEXÃO DESLIZANTE", "NONE": "" };
+        const texto = traduzir[card.action] || traduzir[card.isometry] || "";
+        const cores = { "RED": "#EF4444", "BLUE": "#3B82F6", "GREEN": "#22C55E", "YELLOW": "#EAB308", "BLACK": "#1E293B" };
+        const corBase = cores[card.color] || "#1E293B";
+        const corClasse = card.color === "YELLOW" ? "bg-[#EAB308] text-black" : (card.color === "BLACK" ? "bg-[#1E293B] text-white" : `bg-[${corBase}] text-white`);
+        const cisnePath = "M -0.8 1.2 L -0.4 1.4 L -0.1 1.2 L 0.4 -0.1 L 1.5 0.2 L 0.8 -0.5 L -0.6 -0.5 L -0.6 -0.3 L -0.3 0.1 L -0.5 1.0 Z";
+        
+        let svgContent = "";
+        let markerDefs = `<defs><marker id="arrow-${card.color}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1A1A1A" /></marker></defs>`;
+
+        if (texto === "MUDAR COR" || texto === "+4 CARTAS") {
+            let plusFour = texto === "+4 CARTAS" ? `<div class="absolute text-white font-black text-xl drop-shadow-md">+4</div>` : "";
+            svgContent = `<div class="w-14 h-14 rounded-full overflow-hidden grid grid-cols-2 gap-0.5 transform rotate-45 border-2 border-slate-700 shadow-inner"><div class="bg-[#EF4444]"></div><div class="bg-[#3B82F6]"></div><div class="bg-[#EAB308]"></div><div class="bg-[#22C55E]"></div></div>${plusFour}`;
+        } else {
+            let innerSvg = markerDefs;
+            if (texto === "TRANSLAÇÃO") {
+                innerSvg += `<path d="${cisnePath}" fill="${corBase}" opacity="1" transform="scale(0.6) translate(-1, -1) scale(1, -1)" /><path d="${cisnePath}" fill="${corBase}" opacity="0.3" transform="scale(0.6) translate(1, 1) scale(1, -1)" /><line x1="-0.4" y1="-0.4" x2="0.4" y2="0.4" stroke="#1A1A1A" stroke-width="0.08" marker-end="url(#arrow-${card.color})" />`;
+            } else if (texto === "ROTAÇÃO") {
+                innerSvg += `<path d="${cisnePath}" fill="${corBase}" opacity="1" transform="scale(0.6) translate(0, -1.2) scale(1, -1)" /><path d="${cisnePath}" fill="${corBase}" opacity="0.3" transform="scale(0.6) rotate(90) translate(0, -1.2) scale(1, -1)" /><circle cx="0" cy="0" r="0.1" fill="#1A1A1A" />`;
+            } else if (texto === "REFLEXÃO") {
+                innerSvg += `<path d="${cisnePath}" fill="${corBase}" opacity="1" transform="scale(0.6) translate(-1.2, 0) scale(1, -1)" /><path d="${cisnePath}" fill="${corBase}" opacity="0.3" transform="scale(-0.6, 0.6) translate(-1.2, 0) scale(1, -1)" /><line x1="0" y1="-2" x2="0" y2="2" stroke="#1A1A1A" stroke-width="0.08" stroke-dasharray="0.3, 0.3" />`;
+            } else if (texto === "REFLEXÃO DESLIZANTE") {
+                innerSvg += `<path d="${cisnePath}" fill="${corBase}" opacity="1" transform="scale(0.5) translate(-1.5, -1.5) scale(1, -1)" /><path d="${cisnePath}" fill="${corBase}" opacity="0.3" transform="scale(-0.5, 0.5) translate(-1.5, 1.5) scale(1, -1)" /><line x1="0" y1="-2" x2="0" y2="2" stroke="#1A1A1A" stroke-width="0.08" stroke-dasharray="0.3, 0.3" /><line x1="0.4" y1="-0.8" x2="0.4" y2="0.8" stroke="#1A1A1A" stroke-width="0.08" marker-end="url(#arrow-${card.color})" />`;
+            } else if (texto === "PULAR") {
+                innerSvg += `<circle cx="0" cy="0" r="1.2" fill="none" stroke="${corBase}" stroke-width="0.25" /><line x1="-0.8" y1="0.8" x2="0.8" y2="-0.8" stroke="${corBase}" stroke-width="0.25" />`;
+            } else if (texto === "INVERTER") {
+                innerSvg += `<path d="M -0.8 -0.5 A 1 1 0 0 1 0.8 -0.5" fill="none" stroke="${corBase}" stroke-width="0.1" marker-end="url(#arrow-${card.color})" /><path d="M 0.8 0.5 A 1 1 0 0 1 -0.8 0.5" fill="none" stroke="${corBase}" stroke-width="0.1" marker-end="url(#arrow-${card.color})" />`;
+            } else if (texto === "+2 CARTAS") {
+                innerSvg += `<text x="0" y="0.4" font-size="1.5" font-weight="black" text-anchor="middle" fill="${corBase}">+2</text>`;
+            }
+            svgContent = `<svg viewBox="-2 -2 4 4" class="w-14 h-14 drop-shadow-md">${innerSvg}</svg>`;
+        }
+        const clickAttr = index !== null ? `onclick="playCard(${index}, '${card.color}')"` : '';
+        return `<div class="hand-card w-28 h-40 ${corClasse} rounded-xl p-2 flex flex-col items-center justify-between shadow-lg cursor-pointer border border-white/20" ${clickAttr}>
+            <div class="text-[9px] font-black uppercase text-center mt-1 leading-tight h-6 flex items-center justify-center">${texto}</div>
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-inner relative border border-slate-200">${svgContent}</div>
+            <div class="text-[9px] font-black uppercase text-center mb-1 leading-tight h-6 flex items-center justify-center rotate-180 opacity-70">${texto}</div>
+          </div>`;
+    }
+
+    function toggleRulesModal() { document.getElementById('rulesModal').classList.toggle('hidden-modal'); }
+
+    function connect() {
+        myName = document.getElementById('playerName').value.trim();
+        const room = document.getElementById('roomId').value.trim().toUpperCase();
+        if(!myName || !room) return alert("Preenche o teu nome e o código do grupo!");
+        if(ws) ws.close();
+        
+        ws = new WebSocket(`ws://localhost:8000/ws/${room}/${myName}`);
+        ws.onopen = () => {
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnDraw').disabled = false;
+            document.getElementById('btnIsometria').disabled = false;
+            
+            // EXCLUIR OS CAMPOS DE ENTRADA: Substitui os inputs por um badge estático limpo
+            document.getElementById('loginPanel').innerHTML = `
+                <div class="p-4 bg-slate-800 rounded-xl border border-purple-500/40 text-center">
+                    <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Mesa Conetada</p>
+                    <p class="text-xl font-black text-white mt-1">${myName}</p>
+                    <p class="text-xs font-mono text-purple-400 mt-0.5">${room}</p>
+                </div>`;
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "error") { alert(data.message); }
+            else if (data.type === "game_state") {
+                let corTraduzida = {"RED": "Vermelho", "BLUE": "Azul", "GREEN": "Verde", "YELLOW": "Amarelo", "BLACK": "Mágica"};
+                const coresHex = { "RED": "#EF4444", "BLUE": "#3B82F6", "GREEN": "#22C55E", "YELLOW": "#EAB308", "BLACK": "#FFFFFF" };
+                
+                if(data.players_info) {
+                    const pl = document.getElementById('playerList'); pl.innerHTML = "";
+                    data.players_info.forEach(info => {
+                        let nomeJogador = info.split(' ')[0];
+                        let isTurn = (nomeJogador === data.current_turn);
+                        pl.innerHTML += `<span class="px-3 py-1 rounded-full ${isTurn ? 'bg-[#A855F7] text-white' : 'bg-slate-700 text-slate-300'}">${info}</span>`;
+                    });
+                }
+
+                const turnElem = document.getElementById('currentTurn');
+                turnElem.innerText = data.current_turn || "-";
+                if(data.current_turn === myName) { turnElem.classList.add('turn-active'); } 
+                else { turnElem.classList.remove('turn-active'); }
+
+                const activeColorElem = document.getElementById('activeColor');
+                activeColorElem.innerText = corTraduzida[data.active_color] || "-";
+                activeColorElem.style.color = coresHex[data.active_color] || "#94A3B8";
+                if (data.top_card) document.getElementById('discardPile').innerHTML = renderCard(data.top_card);
+
+                const sysModal = document.getElementById('systemModal');
+                const sysContent = document.getElementById('systemModalContent');
+
+                // CAPACIDADE DOCENTE: Se o estado for "TEACHER_PAUSED", bloqueia o ecrã com uma mensagem estrita
+                if (data.state === "TEACHER_PAUSED") {
+                    sysModal.classList.remove('hidden-modal');
+                    sysContent.innerHTML = `
+                        <h1 style="color: #a855f7; font-size: 1.8em; font-weight: black; margin-top:0;">⏸️ Jogo Suspenso</h1>
+                        <p style="font-size: 1.1em; line-height:1.4;">O professor pausou a partida para fazer uma explicação geral à turma.</p>
+                        <p style="color: #64748b; font-size: 0.9em; margin-top:15px;">Larga as cartas, larga o ecrã e olha para o quadro.</p>
+                    `;
+                }
+                else if (data.state === "BLOCKED") {
+                    sysModal.classList.remove('hidden-modal');
+                    sysContent.innerHTML = `
+                        <h1 style="color: #EAB308; margin-top:0; font-size: 1.5em; font-weight: bold;">🚧 Pausa Pedagógica</h1>
+                        <p style="margin-top: 10px;">Respondam à <b>Pergunta ${data.checkpoint}</b> da vossa ficha de trabalho.</p>
+                        <input type="password" id="portagemInput" placeholder="PIN do Prof." autocomplete="off" class="w-full my-4 p-3 bg-black border border-slate-700 rounded text-center font-mono tracking-widest text-white outline-none focus:border-[#EAB308]">
+                        <button onclick="submitPassword()" class="w-full bg-[#EAB308] text-black font-bold py-3 rounded uppercase tracking-wide mt-2">Desbloquear Mesa</button>
+                    `;
+                } else if (data.state === "FINISHED") {
+                    sysModal.classList.remove('hidden-modal');
+                    sysContent.innerHTML = `<h1 style="color: #22C55E; font-size: 2.5em; font-weight: black; margin-top:0;">🏆 FIM DE JOGO!</h1><p>Vencedor: <b style="font-size: 1.5em; color: white;">${data.winner}</b></p><button onclick="location.reload()" class="w-full bg-[#22C55E] text-white font-bold py-3 rounded mt-6 uppercase">Nova Partida</button>`;
+                } else {
+                    sysModal.classList.add('hidden-modal');
+                }
+            }
+            else if (data.type === "private_hand") {
+                const handDiv = document.getElementById('myHand'); handDiv.innerHTML = "";
+                data.hand.forEach((card, idx) => { handDiv.innerHTML += renderCard(card, idx); });
+            }
+        };
+    }
+    function playCard(index, color) { if (color === "BLACK") { pendingCardIndex = index; document.getElementById('colorModal').classList.remove('hidden-modal'); } else ws.send(JSON.stringify({ action: "play_card", index: index, chosen_color: null })); }
+    function submitColor(c) { document.getElementById('colorModal').classList.add('hidden-modal'); if (pendingCardIndex !== null) { ws.send(JSON.stringify({ action: "play_card", index: pendingCardIndex, chosen_color: c })); pendingCardIndex = null; } }
+    function submitPassword() { ws.send(JSON.stringify({ action: "unlock", password: document.getElementById('portagemInput').value })); }
+    function startGame() { ws.send(JSON.stringify({ action: "start_game" })); }
+    function drawCard() { ws.send(JSON.stringify({ action: "draw_card" })); }
+    function sayIsometria() { ws.send(JSON.stringify({ action: "say_isometria" })); }
+  </script>
+</body>
+</html>
