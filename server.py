@@ -63,7 +63,6 @@ async def api_create_room(config: RoomConfig):
     active_rooms[room_id_seguro] = nova_sala
     return {"success": True, "message": f"Sala '{room_id_seguro}' criada!"}
 
-# NOVO ENDPOINT: Pausa ou retoma todos os grupos em simultâneo
 @app.post("/api/global_pause")
 async def api_global_pause(config: GlobalPauseConfig):
     global global_paused
@@ -71,6 +70,31 @@ async def api_global_pause(config: GlobalPauseConfig):
     for room_id, room in active_rooms.items():
         await manager.broadcast(broadcast_game_update(room), room_id)
     return {"success": True, "global_paused": global_paused}
+
+# NOVA ROTA INJETADA: RESET DO SERVIDOR (Garbage Collection)
+@app.post("/api/reset")
+async def api_reset_server():
+    global active_rooms, global_paused
+    
+    # Notificar as salas de que vão ser encerradas (opcional, previne que os clientes fiquem bloqueados num estado)
+    for room_id, room in active_rooms.items():
+        await manager.broadcast({"type": "error", "message": "O professor encerrou as salas. A aula terminou!"}, room_id)
+        
+    # Limpeza da Memória do Servidor
+    active_rooms.clear()
+    global_paused = False
+    
+    # Fechar à força todos os websockets ativos para não ficarem "presos"
+    for room_id, connections in manager.active_connections.items():
+        for ws in connections:
+            try:
+                await ws.close()
+            except:
+                pass
+    manager.active_connections.clear()
+    
+    return {"success": True, "message": "Memória do servidor limpa e conexões encerradas. Pronto para nova turma."}
+
 
 def broadcast_game_update(room: Room):
     top = room.discard_pile[-1] if room.discard_pile else None
